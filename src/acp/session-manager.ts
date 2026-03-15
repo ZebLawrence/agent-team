@@ -145,6 +145,7 @@ export class SessionManager extends EventEmitter {
 
     managed.status = 'busy';
     this.emit('status_change', agentId, 'busy');
+    this.emit('task_start', agentId, taskDescription);
 
     const relevantMemory = await this.memory.search(agentId, taskDescription, 3);
     let promptText = '';

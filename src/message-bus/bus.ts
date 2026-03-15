@@ -17,6 +17,7 @@ export type BusEventType =
   | 'handoff'
   | 'raw_update'
   | 'status_change'
+  | 'task_start'
   | 'intervention'
   | 'memory';
 
@@ -72,6 +73,15 @@ export class MessageBus extends EventEmitter {
       type: 'raw_update',
       agentId,
       data: update,
+      ts: Date.now(),
+    });
+  }
+
+  publishTaskStart(agentId: AgentId, taskDescription: string): void {
+    this.publish({
+      type: 'task_start',
+      agentId,
+      data: { taskDescription },
       ts: Date.now(),
     });
   }

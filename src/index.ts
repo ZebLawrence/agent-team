@@ -66,9 +66,12 @@ async function main() {
   const messageBus = new MessageBus();
   const sessionManager = new SessionManager(agentConfigs, memory, demoMode);
 
-  // Wire session manager status changes to the message bus
+  // Wire session manager events to the message bus
   sessionManager.on('status_change', (agentId: string, status: string) => {
     messageBus.publishStatusChange(agentId as AgentId, status);
+  });
+  sessionManager.on('task_start', (agentId: string, taskDescription: string) => {
+    messageBus.publishTaskStart(agentId as AgentId, taskDescription);
   });
 
   // 4. Initialize coordinator (routes handoffs between agents)

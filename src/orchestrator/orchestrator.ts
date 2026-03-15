@@ -67,6 +67,30 @@ export class Orchestrator extends EventEmitter {
     const taskKey = event.agentId;
 
     switch (event.type) {
+      case 'task_start': {
+        // A new task was assigned — register it with the description
+        const desc = (event.data as { taskDescription: string }).taskDescription || '';
+        const task = this.getOrCreateTask(taskKey, event.agentId);
+        task.taskDescription = desc;
+        task.status = 'working';
+        task.startedAt = Date.now();
+        task.lastEventAt = Date.now();
+        task.thoughtSummary = [];
+        task.goalDrift = 1.0;
+        break;
+      }
+
+      case 'status_change': {
+        const status = (event.data as { status: string }).status;
+        if (status === 'ready') {
+          // Agent finished its turn — mark the task complete
+          this.updateTaskStatus(taskKey, event.agentId, 'complete');
+        } else if (status === 'error') {
+          this.updateTaskStatus(taskKey, event.agentId, 'stalled');
+        }
+        break;
+      }
+
       case 'thought':
         this.updateTaskThought(taskKey, event.agentId, (event.data as { text: string }).text);
         break;
@@ -137,8 +161,12 @@ export class Orchestrator extends EventEmitter {
   private checkForStalls(): void {
     const now = Date.now();
     for (const [, task] of this.taskRegistry) {
+      // Skip completed tasks, already-stalled tasks, and tasks with no assigned goal
+      if (task.status === 'complete' || task.status === 'stalled') continue;
+      if (!task.taskDescription) continue;
+
       if (
-        task.status === 'working' &&
+        (task.status === 'working' || task.status === 'thinking') &&
         now - task.lastEventAt > this.config.stallThresholdMs
       ) {
         task.status = 'stalled';
