@@ -1,0 +1,37 @@
+{
+  "version": "1.0.0",
+  "models": [
+    { "id": "claude-sonnet-4.6", "name": "Claude Sonnet 4.6", "provider": "Anthropic" },
+    { "id": "claude-opus-4.6", "name": "Claude Opus 4.6", "provider": "Anthropic" },
+    { "id": "claude-opus-4.6-fast", "name": "Claude Opus 4.6 Fast", "provider": "Anthropic" },
+    { "id": "claude-opus-4.5", "name": "Claude Opus 4.5", "provider": "Anthropic" },
+    { "id": "claude-sonnet-4.5", "name": "Claude Sonnet 4.5", "provider": "Anthropic" },
+    { "id": "claude-sonnet-4", "name": "Claude Sonnet 4", "provider": "Anthropic" },
+    { "id": "claude-haiku-4.5", "name": "Claude Haiku 4.5", "provider": "Anthropic" },
+    { "id": "gpt-5.4", "name": "GPT-5.4", "provider": "OpenAI" },
+    { "id": "gpt-5.3-codex", "name": "GPT-5.3 Codex", "provider": "OpenAI" },
+    { "id": "gpt-5.2-codex", "name": "GPT-5.2 Codex", "provider": "OpenAI" },
+    { "id": "gpt-5.2", "name": "GPT-5.2", "provider": "OpenAI" },
+    { "id": "gpt-5.1-codex-max", "name": "GPT-5.1 Codex Max", "provider": "OpenAI" },
+    { "id": "gpt-5.1-codex", "name": "GPT-5.1 Codex", "provider": "OpenAI" },
+    { "id": "gpt-5.1-codex-mini", "name": "GPT-5.1 Codex Mini", "provider": "OpenAI" },
+    { "id": "gpt-5.1", "name": "GPT-5.1", "provider": "OpenAI" },
+    { "id": "gpt-5-mini", "name": "GPT-5 Mini", "provider": "OpenAI" },
+    { "id": "gpt-4.1", "name": "GPT-4.1", "provider": "OpenAI" },
+    { "id": "gemini-3.1-pro", "name": "Gemini 3.1 Pro", "provider": "Google" },
+    { "id": "gemini-3-pro", "name": "Gemini 3 Pro", "provider": "Google" },
+    { "id": "gemini-3-flash", "name": "Gemini 3 Flash", "provider": "Google" },
+    { "id": "gemini-2.5-pro", "name": "Gemini 2.5 Pro", "provider": "Google" },
+    { "id": "grok-code-fast-1", "name": "Grok Code Fast 1", "provider": "xAI" }
+  ],
+  "orchestrator": {
+    "role": "Passive observer with narrow advisory channel",
+    "interventionTriggers": ["stalled", "deadlock", "goal_drift", "guidance_request"],
+    "neverDoes": [
+      "Reassign tasks between agents",
+      "Cancel in-flight sessions",
+      "Inject into agent-to-agent handoff messages",
+      "Make tool call approval decisions"
+    ]
+  }
+}

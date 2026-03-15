@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agent Team Dashboard</title>
+  <style>
+    /* ===== Reset & Base ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary: #0f1117;
+      --bg-secondary: #1a1d27;
+      --bg-card: #1e2130;
+      --bg-hover: #252840;
+      --border: #2a2d3e;
+      --text-primary: #e4e6f0;
+      --text-secondary: #8b8fa3;
+      --text-muted: #5c6078;
+      --accent-purple: #8B5CF6;
+      --accent-blue: #3B82F6;
+      --accent-green: #10B981;
+      --accent-amber: #F59E0B;
+      --accent-red: #EF4444;
+      --accent-cyan: #06B6D4;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --shadow: 0 4px 24px rgba(0,0,0,0.3);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      overflow: hidden;
+      height: 100vh;
+    }
+
+    .app {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      height: 100vh;
+    }
+
+    /* ===== Header ===== */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-secondary);
+    }
+    .logo { display: flex; align-items: center; gap: 12px; }
+    .logo h1 { font-size: 16px; font-weight: 600; letter-spacing: -0.02em; }
+    .logo .dot { width: 8px; height: 8px; border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .header-status { display: flex; gap: 16px; align-items: center; font-size: 12px; color: var(--text-secondary); }
+
+    /* ===== Main Area ===== */
+    .main-area {
+      position: relative; overflow: hidden;
+      display: grid;
+      gap: 12px; padding: 12px;
+    }
+    .arrows-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 10; }
+
+    /* ===== Agent Card ===== */
+    .agent-card {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+      display: flex; flex-direction: column; overflow: hidden; min-height: 0; transition: border-color 0.2s;
+    }
+    .agent-card:hover { border-color: #3a3d5e; }
+
+    .agent-card-header {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; border-bottom: 1px solid var(--border);
+      background: var(--bg-secondary); flex-shrink: 0;
+    }
+    .agent-avatar {
+      width: 32px; height: 32px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; flex-shrink: 0;
+    }
+    .agent-info { flex: 1; min-width: 0; }
+    .agent-name-row { display: flex; align-items: center; gap: 8px; }
+    .agent-name { font-weight: 600; font-size: 13px; }
+    .agent-role { font-size: 11px; color: var(--text-secondary); }
+    .agent-model {
+      font-size: 10px; padding: 1px 6px; border-radius: 4px;
+      background: rgba(139,92,246,0.1); color: var(--accent-purple);
+      font-family: 'SF Mono', 'Fira Code', monospace; white-space: nowrap;
+    }
+    .model-select {
+      font-size: 10px; padding: 2px 4px; border-radius: 4px;
+      background: rgba(139,92,246,0.1); color: var(--accent-purple);
+      border: 1px solid transparent;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      cursor: pointer; outline: none;
+      max-width: 170px;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .model-select:hover { border-color: var(--accent-purple); background: rgba(139,92,246,0.15); }
+    .model-select:focus { border-color: var(--accent-purple); }
+    .model-select:disabled { opacity: 0.5; cursor: not-allowed; }
+    .model-select option {
+      background: var(--bg-card); color: var(--text-primary);
+      font-size: 12px;
+    }
+    .agent-status-badge { font-size: 10px; padding: 2px 8px; border-radius: 99px; font-weight: 500; flex-shrink: 0; }
+    .status-thinking { background: rgba(139,92,246,0.15); color: var(--accent-purple); }
+    .status-working { background: rgba(16,185,129,0.15); color: var(--accent-green); }
+    .status-waiting_handoff { background: rgba(245,158,11,0.15); color: var(--accent-amber); }
+    .status-idle { background: rgba(91,95,120,0.15); color: var(--text-secondary); }
+    .status-stalled { background: rgba(239,68,68,0.15); color: var(--accent-red); }
+    .status-complete { background: rgba(16,185,129,0.15); color: var(--accent-green); }
+    .status-error { background: rgba(239,68,68,0.15); color: var(--accent-red); }
+    .status-disconnected { background: rgba(91,95,120,0.2); color: var(--text-muted); }
+    .status-ready { background: rgba(6,182,212,0.15); color: var(--accent-cyan); }
+    .status-busy { background: rgba(245,158,11,0.15); color: var(--accent-amber); }
+
+    /* Tabs */
+    .agent-tabs {
+      display: flex; gap: 2px; padding: 4px 10px;
+      border-bottom: 1px solid var(--border); background: var(--bg-card); flex-shrink: 0;
+    }
+    .agent-tab {
+      padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer;
+      background: transparent; border: none; color: var(--text-muted); transition: all 0.15s;
+    }
+    .agent-tab:hover { background: var(--bg-hover); color: var(--text-secondary); }
+    .agent-tab.active { background: var(--bg-hover); color: var(--text-primary); font-weight: 500; }
+
+    /* Feed */
+    .agent-feed {
+      flex: 1; overflow-y: auto; padding: 8px 10px;
+      display: flex; flex-direction: column; gap: 6px; min-height: 0;
+    }
+
+    .feed-event {
+      display: flex; gap: 8px; padding: 6px 10px;
+      border-radius: 6px; transition: background 0.15s; animation: fadeIn 0.15s ease-out;
+    }
+    .feed-event:hover { background: var(--bg-hover); }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+    .feed-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 7px; flex-shrink: 0; }
+    .feed-content { flex: 1; min-width: 0; }
+    .feed-meta { display: flex; gap: 6px; align-items: center; font-size: 10px; color: var(--text-muted); margin-bottom: 2px; }
+
+    .feed-type-badge { font-size: 9px; padding: 0px 5px; border-radius: 3px; font-weight: 500; }
+    .badge-thought { background: rgba(139,92,246,0.15); color: var(--accent-purple); }
+    .badge-output { background: rgba(59,130,246,0.15); color: var(--accent-blue); }
+    .badge-tool_call { background: rgba(6,182,212,0.15); color: var(--accent-cyan); }
+    .badge-handoff { background: rgba(245,158,11,0.15); color: var(--accent-amber); }
+    .badge-intervention { background: rgba(239,68,68,0.15); color: var(--accent-red); }
+    .badge-status_change { background: rgba(91,95,120,0.15); color: var(--text-secondary); }
+
+    /* --- Markdown-rendered output --- */
+    .feed-text {
+      font-size: 12px; color: var(--text-primary);
+      word-break: break-word; line-height: 1.55;
+    }
+    .feed-text.thought-text {
+      color: var(--text-secondary); font-style: italic; white-space: pre-wrap;
+    }
+
+    /* Rendered markdown styles */
+    .md-rendered p { margin: 0 0 6px 0; }
+    .md-rendered p:last-child { margin-bottom: 0; }
+    .md-rendered strong { font-weight: 600; color: var(--text-primary); }
+    .md-rendered em { font-style: italic; }
+    .md-rendered code {
+      background: rgba(139,92,246,0.1); color: var(--accent-purple);
+      padding: 1px 5px; border-radius: 3px;
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace; font-size: 11px;
+    }
+    .md-rendered pre {
+      background: var(--bg-primary); border: 1px solid var(--border);
+      border-radius: 6px; padding: 8px 10px; margin: 6px 0;
+      overflow-x: auto; font-size: 11px; line-height: 1.4;
+    }
+    .md-rendered pre code {
+      background: transparent; padding: 0; color: var(--text-primary); font-size: 11px;
+    }
+    .md-rendered ul, .md-rendered ol {
+      padding-left: 18px; margin: 4px 0;
+    }
+    .md-rendered li { margin-bottom: 2px; }
+    .md-rendered h1, .md-rendered h2, .md-rendered h3,
+    .md-rendered h4, .md-rendered h5, .md-rendered h6 {
+      margin: 8px 0 4px 0; font-weight: 600; color: var(--text-primary);
+    }
+    .md-rendered h1 { font-size: 15px; }
+    .md-rendered h2 { font-size: 14px; }
+    .md-rendered h3 { font-size: 13px; }
+    .md-rendered hr {
+      border: none; border-top: 1px solid var(--border); margin: 8px 0;
+    }
+    .md-rendered a { color: var(--accent-blue); text-decoration: none; }
+    .md-rendered a:hover { text-decoration: underline; }
+    .md-rendered blockquote {
+      border-left: 3px solid var(--border); padding-left: 10px;
+      color: var(--text-secondary); margin: 4px 0;
+    }
+
+    .feed-empty {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 100%; color: var(--text-muted); font-size: 12px; text-align: center; gap: 4px;
+    }
+    .feed-empty .icon { font-size: 24px; opacity: 0.4; }
+
+    /* ===== Bottom Pane ===== */
+    .bottom-pane {
+      border-top: 1px solid var(--border); background: var(--bg-secondary);
+      display: grid; grid-template-columns: 1fr 320px; min-height: 56px; max-height: 180px;
+    }
+    .input-section {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 16px; border-right: 1px solid var(--border);
+    }
+    .input-section select {
+      padding: 7px 10px; background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); color: var(--text-primary); font-size: 12px; flex-shrink: 0;
+    }
+    .input-section input {
+      flex: 1; padding: 7px 12px; background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); color: var(--text-primary); font-size: 12px; outline: none; min-width: 0;
+    }
+    .input-section input:focus { border-color: var(--accent-purple); }
+    .input-section button {
+      padding: 7px 18px; background: var(--accent-purple); border: none;
+      border-radius: var(--radius-sm); color: white; font-size: 12px;
+      font-weight: 500; cursor: pointer; transition: opacity 0.15s; flex-shrink: 0;
+    }
+    .input-section button:hover { opacity: 0.85; }
+
+    .interventions-section { padding: 6px 12px; overflow-y: auto; }
+    .interventions-title {
+      font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 4px;
+    }
+    .intervention-item {
+      padding: 5px 8px; margin-bottom: 4px;
+      background: rgba(239,68,68,0.05); border: 1px solid rgba(239,68,68,0.12);
+      border-radius: 6px; font-size: 11px;
+    }
+    .intervention-reason { font-weight: 600; color: var(--accent-red); font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; }
+    .intervention-text { color: var(--text-secondary); margin-top: 1px; }
+    .no-interventions { color: var(--text-muted); font-size: 11px; padding: 8px 0; text-align: center; }
+
+    /* Loading state */
+    .loading-state {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 100%; color: var(--text-muted); font-size: 14px; gap: 8px;
+    }
+    .loading-state .spinner { width: 24px; height: 24px; border: 2px solid var(--border); border-top-color: var(--accent-purple); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+    /* Arrow animations */
+    @keyframes arrowPulse { 0% { opacity: 0.3; } 50% { opacity: 1; } 100% { opacity: 0.3; } }
+    .arrow-active { animation: arrowPulse 1.5s ease-in-out infinite; }
+    @keyframes arrowFade { from { opacity: 0.7; } to { opacity: 0; } }
+    .arrow-fading { animation: arrowFade 4s ease-out forwards; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.0/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.9/purify.min.js"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+    // ===== Configure marked for safe, minimal output =====
+    marked.setOptions({
+      breaks: true,
+      gfm: true,
+      headerIds: false,
+      mangle: false,
+    });
+
+    // ================================================================
+    // mergeEvents — coalesce consecutive same-type events from the
+    // same agent into a single merged entry. This turns a stream of
+    // tiny "thought" or "output" fragments into one readable block.
+    // ================================================================
+    function mergeEvents(events) {
+      if (events.length === 0) return [];
+
+      const merged = [];
+      let current = null;
+
+      for (const evt of events) {
+        const isMergeable = evt.type === 'thought' || evt.type === 'output';
+
+        if (
+          isMergeable &&
+          current &&
+          current.type === evt.type &&
+          current.agentId === evt.agentId
+        ) {
+          // Same type + same agent in sequence → append text
+          const newText = evt.data?.text || '';
+          current = {
+            ...current,
+            data: { ...current.data, text: (current.data?.text || '') + newText },
+            tsEnd: evt.ts, // track end time for display
+          };
+          // Update the last entry in merged[]
+          merged[merged.length - 1] = current;
+        } else {
+          // Different type, different agent, or non-mergeable → new entry
+          current = { ...evt, tsEnd: evt.ts };
+          merged.push(current);
+        }
+      }
+
+      return merged;
+    }
+
+    // ================================================================
+    // Render markdown string to sanitized HTML
+    // ================================================================
+    function renderMarkdown(text) {
+      if (!text) return '';
+      try {
+        const raw = marked.parse(text);
+        return DOMPurify.sanitize(raw);
+      } catch {
+        return text;
+      }
+    }
+
+    // ================================================================
+    // Compute grid layout based on number of agents
+    // ================================================================
+    function computeGridStyle(agentCount) {
+      if (agentCount <= 1) return { gridTemplateColumns: '1fr', gridTemplateRows: '1fr' };
+      if (agentCount === 2) return { gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr' };
+      if (agentCount <= 4) return { gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr' };
+      if (agentCount <= 6) return { gridTemplateColumns: '1fr 1fr 1fr', gridTemplateRows: '1fr 1fr' };
+      // 7+: 3 columns, as many rows as needed
+      const cols = 3;
+      const rows = Math.ceil(agentCount / cols);
+      return {
+        gridTemplateColumns: `repeat(${cols}, 1fr)`,
+        gridTemplateRows: `repeat(${rows}, 1fr)`,
+      };
+    }
+
+    // ===== WebSocket Hook =====
+    function useWebSocket(url) {
+      const [connected, setConnected] = useState(false);
+      const [events, setEvents] = useState([]);
+      const [agents, setAgents] = useState([]); // dynamic agent list from server
+      const [agentStates, setAgentStates] = useState({});
+      const [agentModels, setAgentModels] = useState({});
+      const [availableModels, setAvailableModels] = useState([]);
+      const [handoffs, setHandoffs] = useState([]);
+      const [interventions, setInterventions] = useState([]);
+      const wsRef = useRef(null);
+      const reconnectTimer = useRef(null);
+
+      // Build a quick lookup from the agents array
+      const agentLookup = useMemo(() => {
+        const map = {};
+        agents.forEach(a => { map[a.id] = a; });
+        return map;
+      }, [agents]);
+
+      const connect = useCallback(() => {
+        const ws = new WebSocket(url);
+        wsRef.current = ws;
+
+        ws.onopen = () => { setConnected(true); console.log('Dashboard connected'); };
+        ws.onclose = () => { setConnected(false); reconnectTimer.current = setTimeout(connect, 3000); };
+
+        ws.onmessage = (e) => {
+          try {
+            const msg = JSON.parse(e.data);
+
+            if (msg.type === 'snapshot') {
+              // Agents come from the server now — fully dynamic
+              const serverAgents = msg.data.agents || [];
+              setAgents(serverAgents);
+
+              const statuses = {};
+              serverAgents.forEach(a => {
+                statuses[a.id] = { status: msg.data.statuses?.[a.id] || 'idle', lastThought: '', handoffCount: 0, taskCount: 0 };
+              });
+              setAgentStates(statuses);
+              setEvents(msg.data.recentEvents || []);
+
+              // Load models from server
+              if (msg.data.models) {
+                setAgentModels(prev => ({ ...prev, ...msg.data.models }));
+              }
+              if (msg.data.availableModels?.length) {
+                setAvailableModels(msg.data.availableModels);
+              }
+            }
+
+            if (msg.type === 'model_change') {
+              setAgentModels(prev => ({ ...prev, [msg.agentId]: msg.model }));
+            }
+
+            if (msg.type === 'error') {
+              const errEvent = {
+                type: 'intervention',
+                agentId: msg.data?.agentId || agents[0]?.id || 'unknown',
+                data: { reason: 'error', suggestion: msg.data?.message || 'Unknown error' },
+                ts: Date.now(),
+              };
+              setEvents(prev => [...prev.slice(-499), errEvent]);
+              setInterventions(prev => [...prev.slice(-19), {
+                agentId: msg.data?.agentId || agents[0]?.id || 'unknown',
+                reason: 'error', suggestion: msg.data?.message || 'Unknown error', ts: Date.now(),
+              }]);
+              return;
+            }
+
+            if (msg.type === 'event') {
+              const event = msg.data;
+              if (event.type === 'raw_update') return;
+
+              setEvents(prev => [...prev.slice(-499), event]);
+
+              setAgentStates(prev => {
+                const current = prev[event.agentId] || { status: 'idle', lastThought: '', handoffCount: 0, taskCount: 0 };
+                const updates = {};
+                if (event.type === 'status_change') {
+                  updates.status = event.data?.status || 'idle';
+                } else if (event.type === 'thought') { updates.status = 'thinking'; updates.lastThought = event.data?.text || ''; }
+                else if (event.type === 'output') { updates.status = 'working'; }
+                else if (event.type === 'tool_call') { updates.status = 'working'; }
+                else if (event.type === 'handoff') { updates.status = 'waiting_handoff'; updates.handoffCount = (current.handoffCount || 0) + 1; }
+                return { ...prev, [event.agentId]: { ...current, ...updates } };
+              });
+
+              if (event.type === 'handoff') {
+                setHandoffs(prev => [...prev.slice(-49), { ...event.data, ts: event.ts }]);
+              }
+              if (event.type === 'intervention') {
+                setInterventions(prev => [...prev.slice(-19), { agentId: event.agentId, ...event.data, ts: event.ts }]);
+              }
+            }
+          } catch (err) { console.error('Message parse error:', err); }
+        };
+      }, [url]);
+
+      useEffect(() => {
+        connect();
+        return () => { clearTimeout(reconnectTimer.current); wsRef.current?.close(); };
+      }, [connect]);
+
+      const sendMessage = useCallback((msg) => {
+        if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify(msg));
+      }, []);
+
+      return { connected, events, agents, agentLookup, agentStates, agentModels, availableModels, handoffs, interventions, sendMessage };
+    }
+
+    // ===== Time Formatters =====
+    function formatTime(ts) {
+      return new Date(ts).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+    function formatTimeRange(ts, tsEnd) {
+      const start = formatTime(ts);
+      if (!tsEnd || tsEnd === ts) return start;
+      const end = formatTime(tsEnd);
+      return start === end ? start : `${start} - ${end}`;
+    }
+
+    // ===== Feed Event Component (renders merged events) =====
+    function FeedEvent({ event, agentColor, agentLookup }) {
+      const typeLabels = {
+        thought: 'Thought', output: 'Output', tool_call: 'Tool',
+        handoff: 'Handoff', intervention: 'Alert', status_change: 'Status',
+      };
+
+      let text = '';
+      let isMarkdown = false;
+
+      if (event.type === 'thought') {
+        text = event.data?.text || '';
+      } else if (event.type === 'output') {
+        text = event.data?.text || '';
+        isMarkdown = true;
+      } else if (event.type === 'tool_call') {
+        text = `${event.data?.name || 'unknown'}(${typeof event.data?.input === 'string' ? event.data.input : '...'})`;
+      } else if (event.type === 'handoff') {
+        const h = event.data;
+        const toAgent = agentLookup[h?.to];
+        text = `Handoff to ${toAgent?.name || h?.to}: ${h?.task || ''}`;
+      } else if (event.type === 'intervention') {
+        text = `${event.data?.reason}: ${event.data?.suggestion || ''}`;
+      } else if (event.type === 'status_change') {
+        const status = event.data?.status || 'unknown';
+        text = status === 'ready' ? 'Turn completed — ready for next task'
+          : status === 'busy' ? 'Processing...'
+          : status === 'error' ? 'Error occurred'
+          : `Status: ${status}`;
+      }
+
+      const dotColor = event.type === 'handoff' ? 'var(--accent-amber)'
+        : event.type === 'intervention' ? 'var(--accent-red)'
+        : agentColor;
+
+      return (
+        <div className="feed-event">
+          <div className="feed-dot" style={{ background: dotColor }} />
+          <div className="feed-content">
+            <div className="feed-meta">
+              <span className={`feed-type-badge badge-${event.type}`}>
+                {typeLabels[event.type] || event.type}
+              </span>
+              <span>{formatTimeRange(event.ts, event.tsEnd)}</span>
+            </div>
+            {isMarkdown ? (
+              <div
+                className="feed-text md-rendered"
+                dangerouslySetInnerHTML={{ __html: renderMarkdown(text) }}
+              />
+            ) : (
+              <div className={`feed-text ${event.type === 'thought' ? 'thought-text' : ''}`}>
+                {text}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ===== Agent Panel =====
+    function AgentPanel({ agentId, agent, state, events, currentModel, availableModels, onModelChange, agentLookup }) {
+      const status = state?.status || 'idle';
+      const [activeTab, setActiveTab] = useState('all');
+      const feedRef = useRef(null);
+
+      // Filter events for this agent
+      const agentEvents = useMemo(() => {
+        return events.filter(e => {
+          if (e.agentId === agentId) return true;
+          // Also show handoffs TO this agent
+          if (e.type === 'handoff' && e.data?.to === agentId) return true;
+          return false;
+        });
+      }, [events, agentId]);
+
+      // Apply tab filter
+      const filteredEvents = useMemo(() => {
+        return agentEvents.filter(e => {
+          if (activeTab === 'all') return true;
+          if (activeTab === 'thoughts') return e.type === 'thought';
+          if (activeTab === 'handoffs') return e.type === 'handoff';
+          if (activeTab === 'tools') return e.type === 'tool_call';
+          return true;
+        });
+      }, [agentEvents, activeTab]);
+
+      // Merge consecutive same-type events
+      const mergedEvents = useMemo(() => mergeEvents(filteredEvents), [filteredEvents]);
+
+      // Count badges
+      const counts = useMemo(() => ({
+        thoughts: agentEvents.filter(e => e.type === 'thought').length,
+        handoffs: agentEvents.filter(e => e.type === 'handoff').length,
+        tools: agentEvents.filter(e => e.type === 'tool_call').length,
+      }), [agentEvents]);
+
+      // Auto-scroll
+      useEffect(() => {
+        if (feedRef.current) {
+          feedRef.current.scrollTop = feedRef.current.scrollHeight;
+        }
+      }, [mergedEvents]);
+
+      return (
+        <div className="agent-card" data-agent={agentId}>
+          <div className="agent-card-header">
+            <div className="agent-avatar" style={{ background: (agent.color || '#8b8fa3') + '20' }}>{agent.emoji || '🤖'}</div>
+            <div className="agent-info">
+              <div className="agent-name-row">
+                <span className="agent-name">{agent.name}</span>
+                <span className="agent-role">{agent.role}</span>
+              </div>
+              <select
+                className="model-select"
+                value={currentModel || agent.model}
+                onChange={e => onModelChange(agentId, e.target.value)}
+                title="Change model"
+                disabled={status === 'busy' || status === 'starting'}
+              >
+                {availableModels.map(m => (
+                  <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
+              </select>
+            </div>
+            <span className={`agent-status-badge status-${status}`}>
+              {status.replace('_', ' ')}
+            </span>
+          </div>
+
+          <div className="agent-tabs">
+            {[
+              { key: 'all', label: 'All' },
+              { key: 'thoughts', label: `Thoughts${counts.thoughts ? ` (${counts.thoughts})` : ''}` },
+              { key: 'handoffs', label: `Handoffs${counts.handoffs ? ` (${counts.handoffs})` : ''}` },
+              { key: 'tools', label: `Tools${counts.tools ? ` (${counts.tools})` : ''}` },
+            ].map(tab => (
+              <button
+                key={tab.key}
+                className={`agent-tab ${activeTab === tab.key ? 'active' : ''}`}
+                onClick={() => setActiveTab(tab.key)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="agent-feed" ref={feedRef}>
+            {mergedEvents.length === 0 ? (
+              <div className="feed-empty">
+                <div className="icon">{agent.emoji || '🤖'}</div>
+                <div>No {activeTab === 'all' ? 'activity' : activeTab} yet</div>
+              </div>
+            ) : (
+              mergedEvents.map((event, i) => (
+                <FeedEvent key={`${event.ts}-${event.type}-${i}`} event={event} agentColor={agent.color || '#8b8fa3'} agentLookup={agentLookup} />
+              ))
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ===== Handoff Arrows =====
+    function HandoffArrows({ handoffs, mainRef, agentLookup }) {
+      const [arrows, setArrows] = useState([]);
+
+      const computeArrows = useCallback(() => {
+        if (!mainRef.current) return;
+        const container = mainRef.current;
+        const containerRect = container.getBoundingClientRect();
+        const newArrows = [];
+        const now = Date.now();
+        const recentHandoffs = handoffs.filter(h => (now - h.ts) < 30000);
+
+        recentHandoffs.forEach((h, i) => {
+          const fromEl = container.querySelector(`[data-agent="${h.from}"]`);
+          const toEl = container.querySelector(`[data-agent="${h.to}"]`);
+          if (!fromEl || !toEl) return;
+
+          const fromRect = fromEl.getBoundingClientRect();
+          const toRect = toEl.getBoundingClientRect();
+
+          const fromX = fromRect.left + fromRect.width / 2 - containerRect.left;
+          const fromY = fromRect.top + fromRect.height / 2 - containerRect.top;
+          const toX = toRect.left + toRect.width / 2 - containerRect.left;
+          const toY = toRect.top + toRect.height / 2 - containerRect.top;
+
+          const dx = toX - fromX;
+          const dy = toY - fromY;
+          const len = Math.sqrt(dx * dx + dy * dy);
+          if (len < 1) return;
+          const offset = 60;
+          const ratio = offset / len;
+
+          const fromAgent = agentLookup[h.from];
+          const toAgent = agentLookup[h.to];
+
+          newArrows.push({
+            key: `${h.from}-${h.to}-${h.ts}-${i}`,
+            sx: fromX + dx * ratio, sy: fromY + dy * ratio,
+            ex: toX - dx * ratio, ey: toY - dy * ratio,
+            fromColor: fromAgent?.color || '#8b8fa3',
+            toColor: toAgent?.color || '#8b8fa3',
+            isActive: h.status === 'pending',
+            isFading: (now - h.ts) > 10000,
+            label: `${fromAgent?.name || h.from} ${String.fromCodePoint(0x2192)} ${toAgent?.name || h.to}`,
+          });
+        });
+        setArrows(newArrows);
+      }, [handoffs, mainRef, agentLookup]);
+
+      useEffect(() => {
+        computeArrows();
+        const interval = setInterval(computeArrows, 1000);
+        window.addEventListener('resize', computeArrows);
+        return () => { clearInterval(interval); window.removeEventListener('resize', computeArrows); };
+      }, [computeArrows]);
+
+      if (arrows.length === 0) return null;
+
+      return (
+        <svg className="arrows-overlay">
+          <defs>
+            {arrows.map(a => (
+              <linearGradient key={`grad-${a.key}`} id={`grad-${a.key}`} x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor={a.fromColor} />
+                <stop offset="100%" stopColor={a.toColor} />
+              </linearGradient>
+            ))}
+            <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L0,6 L8,3 z" fill="var(--accent-amber)" />
+            </marker>
+          </defs>
+          {arrows.map(a => (
+            <g key={a.key} className={a.isActive ? 'arrow-active' : 'arrow-fading'}>
+              <line x1={a.sx} y1={a.sy} x2={a.ex} y2={a.ey} stroke={a.fromColor} strokeWidth="4" strokeLinecap="round" opacity="0.15" />
+              <line x1={a.sx} y1={a.sy} x2={a.ex} y2={a.ey} stroke={`url(#grad-${a.key})`} strokeWidth="2" strokeLinecap="round" markerEnd="url(#arrowhead)" />
+              <text x={(a.sx + a.ex) / 2} y={(a.sy + a.ey) / 2 - 8} textAnchor="middle" fill="var(--text-muted)" fontSize="10" fontFamily="-apple-system, BlinkMacSystemFont, 'Inter', sans-serif">
+                {a.label}
+              </text>
+            </g>
+          ))}
+        </svg>
+      );
+    }
+
+    // ===== Main App =====
+    function App() {
+      const wsUrl = `ws://${window.location.hostname}:${window.location.port || 3000}`;
+      const { connected, events, agents, agentLookup, agentStates, agentModels, availableModels, handoffs, interventions, sendMessage } = useWebSocket(wsUrl);
+      const [taskInput, setTaskInput] = useState('');
+      const [targetAgent, setTargetAgent] = useState('');
+      const mainRef = useRef(null);
+
+      // Set default target agent when agents arrive from server
+      useEffect(() => {
+        if (agents.length > 0 && !targetAgent) {
+          setTargetAgent(agents[0].id);
+        }
+      }, [agents, targetAgent]);
+
+      const handleSendTask = () => {
+        if (!taskInput.trim() || !targetAgent) return;
+        sendMessage({ type: 'prompt_agent', agentId: targetAgent, task: taskInput });
+        setTaskInput('');
+      };
+
+      const handleModelChange = useCallback((agentId, newModel) => {
+        sendMessage({ type: 'change_model', agentId, model: newModel });
+      }, [sendMessage]);
+
+      const gridStyle = useMemo(() => computeGridStyle(agents.length), [agents.length]);
+
+      if (agents.length === 0) {
+        return (
+          <div className="app">
+            <header>
+              <div className="logo">
+                <div className="dot" style={{ background: connected ? '#10B981' : '#EF4444' }} />
+                <h1>Agent Team Dashboard</h1>
+              </div>
+            </header>
+            <div className="loading-state">
+              <div className="spinner" />
+              <div>{connected ? 'Waiting for agents...' : 'Connecting to server...'}</div>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="app">
+          <header>
+            <div className="logo">
+              <div className="dot" style={{ background: connected ? '#10B981' : '#EF4444' }} />
+              <h1>Agent Team Dashboard</h1>
+            </div>
+            <div className="header-status">
+              <span>{connected ? 'Connected' : 'Reconnecting...'}</span>
+              <span>{agents.length} agents</span>
+              <span>{events.length} events</span>
+              <span>{handoffs.filter(h => h.status === 'pending').length} active handoffs</span>
+            </div>
+          </header>
+
+          <div className="main-area" ref={mainRef} style={gridStyle}>
+            <HandoffArrows handoffs={handoffs} mainRef={mainRef} agentLookup={agentLookup} />
+            {agents.map(agent => (
+              <AgentPanel
+                key={agent.id}
+                agentId={agent.id}
+                agent={agent}
+                state={agentStates[agent.id]}
+                events={events}
+                currentModel={agentModels[agent.id]}
+                availableModels={availableModels}
+                onModelChange={handleModelChange}
+                agentLookup={agentLookup}
+              />
+            ))}
+          </div>
+
+          <div className="bottom-pane">
+            <div className="input-section">
+              <select value={targetAgent} onChange={e => setTargetAgent(e.target.value)}>
+                {agents.map(agent => (
+                  <option key={agent.id} value={agent.id}>{agent.name} ({agent.role})</option>
+                ))}
+              </select>
+              <input
+                type="text"
+                placeholder="Send a task to an agent..."
+                value={taskInput}
+                onChange={e => setTaskInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSendTask()}
+              />
+              <button onClick={handleSendTask}>Send</button>
+            </div>
+            <div className="interventions-section">
+              <div className="interventions-title">Interventions ({interventions.length})</div>
+              {interventions.length === 0 ? (
+                <div className="no-interventions">No interventions</div>
+              ) : (
+                interventions.slice(-3).reverse().map((item, i) => (
+                  <div key={i} className="intervention-item">
+                    <span className="intervention-reason">{item.reason} &mdash; {agentLookup[item.agentId]?.name || item.agentId}</span>
+                    <div className="intervention-text">{(item.suggestion || '').substring(0, 100)}</div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

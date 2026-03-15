@@ -1,0 +1,5 @@
+node_modules/
+dist/
+shared/memory/*.jsonl
+*.log
+.DS_Store
